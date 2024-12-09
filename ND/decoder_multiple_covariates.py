@@ -270,7 +270,7 @@ class Decoder_multiple_covariates(nn.Module):
 
         return neg_loglik, penalty, int_z, int_c, int_cz_dc, int_cz_dz
 
-    def fraction_of_variance_explained(self, z, c, account_for_noise=False, divide_by_total_var=True):
+    def fraction_of_variance_explained(self, z, c, account_for_noise=False, divide_by_total_var=True, Y_error=None):
 
         with torch.no_grad():
             # f_z effect
@@ -288,6 +288,10 @@ class Decoder_multiple_covariates(nn.Module):
             # collect Var([f_z, f_c, f_int]) together
             # and divide by total variance
             f_all_var = torch.cat([f_z_var, f_c_var, f_int_var], dim=0)
+
+            if Y_error is not None:
+                y_err_var = Y_error.var(dim=0, keepdim=True)
+                f_all_var = torch.cat([f_z_var, f_c_var, f_int_var, y_err_var], dim=0)
 
             if divide_by_total_var:
 
