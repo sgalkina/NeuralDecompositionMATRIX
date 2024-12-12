@@ -17,6 +17,7 @@ class CVAE_multiple_covariates(nn.Module):
         super().__init__()
 
         self.encoder = encoder
+        self.encoder.to(device)
 
         self.decoder = decoder
 

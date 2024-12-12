@@ -4,3 +4,4 @@ ND/__pycache__/
 *.xlsx
 data/
 results/
+*.out

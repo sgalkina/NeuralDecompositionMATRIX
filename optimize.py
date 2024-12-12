@@ -28,7 +28,7 @@ parser.add_argument("--columns", nargs="+", help="List of column names to use fr
 args = parser.parse_args()
 
 n_iter = args.n_iter
-device = args.device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 selected_columns = args.columns
 
 logger.info(f"Start")
@@ -37,7 +37,7 @@ unique_id = generate_timestamp_id()
 logger.info(f"Generated ID: {unique_id}")
 
 result_matrix = pd.read_csv('data/normalized_features_82_samples.csv')
-df_cov = pd.read_excel('~/Documents/data_integration/data/MATRIX_TS_blocks.xlsx', sheet_name='Factors')
+df_cov = pd.read_excel('data/MATRIX_TS_blocks.xlsx', sheet_name='Factors')
 
 # Check if specific columns were provided
 if selected_columns:
@@ -45,6 +45,9 @@ if selected_columns:
     df_cov = df_cov[selected_columns]  # Select only the specified columns
 else:
     logger.info("Using all columns from the covariates file")
+
+columns_string = '-'.join(list(df_cov.columns))
+unique_id += '-' + columns_string
 
 Y = result_matrix.to_numpy()
 Y = torch.Tensor(Y)
@@ -121,16 +124,17 @@ plot_integrals(integrals[:100], filename=f"results/{unique_id}_integrals_plot.pn
 
 with torch.no_grad():
     mu_z, sigma_z = encoder(Y.to(device), c.to(device))
-    mu_z, sigma_z = mu_z.cpu(), sigma_z.cpu()
-
+    
     Y_pred = decoder(mu_z, c.to(device)).cpu()
     Y_error = Y - Y_pred
     Y_error = Y_error.cpu()
 
+    mu_z, sigma_z = mu_z.cpu(), sigma_z.cpu()
+
     min_z, max_z = mu_z.min(), mu_z.max()
     num_points = 100
     z_linear_space = torch.linspace(min_z, max_z, num_points)
-    z_linear_space = z_linear_space.view(-1, 1)
+    z_linear_space = z_linear_space.view(-1, 1).to(device)
 
     Y_preds = {}
     labels = {}
@@ -158,7 +162,7 @@ with torch.no_grad():
         labels[f'{column_name}'] = {'values': c[:, c_val], 'names': {int(k): v for k, v in enumerate(pd.factorize(df_cov[column_name])[1])}}
         labels[f'Z-{column_name}'] = labels[f'{column_name}']
 
-varexp = decoder.fraction_of_variance_explained(mu_z, c, Y_error=Y_error)
+varexp = decoder.fraction_of_variance_explained(mu_z.to(device), c.to(device), Y_error=Y_error.to(device)).cpu()
 
 column_names = ['Z'] + list(df_cov.columns) + [f'Z-{c}' for c in list(df_cov.columns)] + ['Noise']
 
@@ -181,7 +185,7 @@ for i in range(varexp.shape[1] - 1):
 
 plot_features(
     indices,
-    z_linear_space,
+    z_linear_space.cpu(),
     mu_z,
     Y,
     Y_pred,

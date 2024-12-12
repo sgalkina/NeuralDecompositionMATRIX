@@ -52,8 +52,13 @@ class Decoder_multiple_covariates(nn.Module):
 
         # input -> output
         self.mapping_z = mapping_z
+        self.mapping_z.to(device)
         self.mappings_c = mappings_c
+        for i in range(len(self.mappings_c)):
+            self.mappings_c[i].to(device)
         self.mappings_cz = mappings_cz
+        for i in range(len(self.mappings_cz)):
+            self.mappings_cz[i].to(device)
 
         if self.likelihood == "Gaussian":
             # feature-specific variances (for Gaussian likelihood)
