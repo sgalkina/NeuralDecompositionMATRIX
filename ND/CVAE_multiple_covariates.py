@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch
 import numpy as np
+from loguru import logger
 
 from math import ceil
 
@@ -74,7 +75,7 @@ class CVAE_multiple_covariates(nn.Module):
         # number of iterations = (numer of epochs) * (number of iters per epoch)
         n_epochs = ceil(n_iter / len(data_loader))
         if verbose:
-            print(f"Fitting Neural Decomposition.\n\tData set size {N}. # iterations = {n_iter} (i.e. # epochs <= {n_epochs})\n")
+            logger.info(f"Fitting Neural Decomposition.\n\tData set size {N}. # iterations = {n_iter} (i.e. # epochs <= {n_epochs})\n")
 
         loss_values = np.zeros(ceil(n_iter // logging_freq))
 
@@ -131,7 +132,7 @@ class CVAE_multiple_covariates(nn.Module):
                     int_cz_values[index, :] = int_cz
 
                 if verbose and iteration % 500 == 0:
-                    print(f"\tIter {iteration:5}.\tTotal loss {loss.item():.3f}")
+                    logger.info(f"\tIter {iteration:5}.\tTotal loss {loss.item():.3f}")
 
                 iteration += 1
 

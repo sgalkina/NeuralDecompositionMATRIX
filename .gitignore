@@ -2,3 +2,5 @@
 ND/.ipynb_checkpoints/
 ND/__pycache__/
 *.xlsx
+data/
+results/
