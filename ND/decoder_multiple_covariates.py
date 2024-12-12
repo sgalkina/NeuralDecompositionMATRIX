@@ -105,40 +105,36 @@ class Decoder_multiple_covariates(nn.Module):
 
     def forward_c(self, c):
         if self.has_feature_level_sparsity:
-            out = 0.0
+            out = []
             if self.training:
                 w = rsample_RelaxedBernoulli(self.temperature, self.qlogits_c)
             else:
                 w = torch.sigmoid(self.qlogits_c)
             for j in range(self.n_covariates):
-                out += w[j, :] * (self.mappings_c[j](c[:, j:(j + 1)]))
+                out.append(w[j, :] * (self.mappings_c[j](c[:, j:(j + 1)])))
         else:
-            out = sum(
-                [(self.mappings_c[j](c[:, j:(j + 1)])) for j in range(self.n_covariates)]
-            )
+            out = [(self.mappings_c[j](c[:, j:(j + 1)])) for j in range(self.n_covariates)]
 
         return out
 
     def forward_cz(self, z, c):
         if self.has_feature_level_sparsity:
-            out = 0.0
+            out = []
             if self.training:
                 w = rsample_RelaxedBernoulli(self.temperature, self.qlogits_cz)
             else:
                 w = torch.sigmoid(self.temperature, self.qlogits_cz)
             for j in range(self.n_covariates):
                 input = torch.cat([z, c[:, j:(j + 1)]], dim=1)
-                out += w[j, :] * (self.mappings_cz[j](input))
+                out.append(w[j, :] * (self.mappings_cz[j](input)))
         else:
-            out = sum(
-                [(self.mappings_cz[j](torch.cat([z, c[:, j:(j + 1)]], dim=1))) for j in range(self.n_covariates)]
-            )
+            out = [(self.mappings_cz[j](torch.cat([z, c[:, j:(j + 1)]], dim=1))) for j in range(self.n_covariates)]
 
         return out
 
 
     def forward(self, z, c):
-        return self.intercept + self.forward_z(z) + self.forward_c(c) + self.forward_cz(z, c)
+        return self.intercept + self.forward_z(z) + sum(self.forward_c(c)) + sum(self.forward_cz(z, c))
 
     def loglik(self, y_pred, y_obs):
 
@@ -278,20 +274,20 @@ class Decoder_multiple_covariates(nn.Module):
             f_z_var = f_z.var(dim=0, keepdim=True)
 
             # f_c
-            f_c = self.forward_c(c)
-            f_c_var = f_c.var(dim=0, keepdim=True)
+            f_cs = self.forward_c(c)
+            f_c_vars = [f_c.var(dim=0, keepdim=True) for f_c in f_cs]
 
             # f_int
-            f_int = self.forward_cz(z, c)
-            f_int_var = f_int.var(dim=0, keepdim=True)
+            f_ints = self.forward_cz(z, c)
+            f_int_vars = [f_int.var(dim=0, keepdim=True) for f_int in f_ints]
 
             # collect Var([f_z, f_c, f_int]) together
             # and divide by total variance
-            f_all_var = torch.cat([f_z_var, f_c_var, f_int_var], dim=0)
+            f_all_var = torch.cat([f_z_var] + f_c_vars + f_int_vars, dim=0)
 
             if Y_error is not None:
                 y_err_var = Y_error.var(dim=0, keepdim=True)
-                f_all_var = torch.cat([f_z_var, f_c_var, f_int_var, y_err_var], dim=0)
+                f_all_var = torch.cat([f_z_var] + f_c_vars + f_int_vars + [y_err_var], dim=0)
 
             if divide_by_total_var:
 

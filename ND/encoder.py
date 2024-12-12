@@ -21,6 +21,7 @@ class cEncoder(nn.Module):
     def forward(self, Y, c):
 
         out = self.mapping(torch.cat([Y, c], dim=1))
+        # out = self.mapping(Y)
 
         mu = out[:, 0:self.z_dim]
         sigma = 1e-6 + softplus(out[:, self.z_dim:(2 * self.z_dim)])
